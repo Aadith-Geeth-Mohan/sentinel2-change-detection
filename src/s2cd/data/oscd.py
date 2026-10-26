@@ -85,6 +85,14 @@ def list_cities(oscd_root: str | Path) -> dict[str, list[str]]:
             f"No labeled cities found under {oscd_root}. Expected "
             "'... Labels/<City>/cm/*.png' structure. Check notebook 01 extraction."
         )
+    # OSCD is a fixed 24-city dataset: 14 train / 10 test. Any other count means
+    # discovery picked up or dropped a city — a phantom name like 'pair' almost
+    # always means the kernel is executing stale cached modules after a pull.
+    if len(out["train"]) != 14 or len(out["test"]) != 10:
+        print(f"WARNING: expected 14 train / 10 test OSCD cities, got "
+              f"{len(out['train'])} / {len(out['test'])}: {out}\n"
+              "  If you see a phantom name (e.g. 'pair'), restart the runtime "
+              "(Runtime > Restart runtime) so the pulled code is actually loaded.")
     return out
 
 
