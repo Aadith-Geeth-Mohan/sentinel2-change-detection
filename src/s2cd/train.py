@@ -77,7 +77,7 @@ def train(cfg_path: str, repo_root: str | Path = ".", store: DriveStore | None =
     run_dir.mkdir(parents=True, exist_ok=True)
 
     manifest = store.read_manifest()
-    if manifest["chip_size"] * 0 + len(manifest["bands"]) != cfg["in_channels"]:
+    if len(manifest["bands"]) != cfg["in_channels"]:
         raise ValueError(
             f"in_channels={cfg['in_channels']} != len(bands)={len(manifest['bands'])}. "
             "Align configs/train.yaml with configs/data.yaml.")
