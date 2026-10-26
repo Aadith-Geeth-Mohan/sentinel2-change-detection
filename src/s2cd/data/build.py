@@ -13,6 +13,7 @@ uses fixed per-band stats (computed on the TRAIN split only) at load time.
 
 import hashlib
 import json
+import shutil
 import zipfile
 from pathlib import Path
 
@@ -44,7 +45,13 @@ def _fill_split(oscd_root, cities, split_dir: Path, cfg: dict, writer) -> int:
     total, per_city = 0, {}
     for city in cities:
         img_dir = oscd._city_image_dir(Path(oscd_root), city)
-        ref = oscd._read_tif(next(img_dir.glob("*.tif"))).shape
+        # ref shape from the SAME band read_city uses as reference (bands[0],
+        # first epoch), so pass-1 counts and pass-2 writes agree even when
+        # bands have different native resolutions
+        cand = sorted(img_dir.rglob(f"*/{bands[0]}.tif"))
+        if not cand:
+            raise RuntimeError(f"{city}: no {bands[0]}.tif under {img_dir} — layout surprise")
+        ref = oscd._read_tif(cand[0]).shape
         n = oscd.city_chip_count(ref, chip, stride)
         per_city[city] = n
         total += n
@@ -123,7 +130,7 @@ def build(oscd_root, data_cfg_path: str, drive: DriveStore,
                 z.write(f, f.name)
         dest = drive.drive / "processed" / zpath.name
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(zpath.read_bytes())  # single archive copy — fine at this size
+        shutil.copy(zpath, dest)  # streaming copy — never load the zip in RAM
         manifest["splits"][split] = {
             "chips": counts[split], "md5": _md5(dest), "zip_bytes": dest.stat().st_size,
         }
