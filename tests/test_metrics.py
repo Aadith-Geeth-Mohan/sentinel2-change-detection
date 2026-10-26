@@ -5,7 +5,9 @@ from s2cd.metrics import ChangeMetrics
 
 def test_perfect_prediction():
     m = ChangeMetrics()
-    logits = torch.tensor([[[10.0, -10.0]], [[-10.0, 10.0]]])  # (2,2,1) logits
+    # (N, C, H, W) with H=W=1 — class dim must be dim 1, like the training path
+    logits = torch.tensor([[[10.0], [-10.0]],
+                           [[-10.0], [10.0]]])
     target = torch.tensor([[0], [1]])
     m.update(logits, target)
     r = m.results()
@@ -20,11 +22,11 @@ def test_known_confusion():
     target = torch.tensor([[1], [1], [0], [1]])
     # logits honoring predictions: change for the first 3, no-change for the last
     logits = torch.stack([
-        torch.tensor([[0.0, 10.0]]),
-        torch.tensor([[0.0, 10.0]]),
-        torch.tensor([[0.0, 10.0]]),
-        torch.tensor([[10.0, 0.0]]),
-    ])
+        torch.tensor([[0.0], [10.0]]),
+        torch.tensor([[0.0], [10.0]]),
+        torch.tensor([[0.0], [10.0]]),
+        torch.tensor([[10.0], [0.0]]),
+    ])  # (4, 2, 1)
     m.update(logits, target)
     r = m.results()
     assert abs(r["change_precision"] - 2 / 3) < 1e-6

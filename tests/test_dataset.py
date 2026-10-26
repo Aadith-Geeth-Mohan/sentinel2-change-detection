@@ -51,14 +51,17 @@ def test_fixed_normalization_not_per_image(fake_split):
 
 
 def test_augmentation_moves_mask_with_images(fake_split):
-    """Rotating/flipping the pair must transform mask identically."""
+    """Whatever random transform augmentation draws, mask must stay aligned
+    with the change. The fixture makes t1 differ from t0 by 2000 DN exactly on
+    the mask block, so after ANY rotation/flip the large-|t1-t0| pixels must
+    coincide with mask==1 — this catches a mask that forgot to transform."""
     d, stats = fake_split
-    ds = ChipDataset(d, stats, augment=False)
-    t0, t1, m = ds[0]
-    # the change block lives in the top-left; rotate 90 deg once manually
-    t0r = torch.from_numpy(np.rot90(t0.numpy(), 1, axes=(1, 2)).copy())
-    mr = torch.from_numpy(np.rot90(m.numpy(), 1, axes=(0, 1)).copy())
-    assert int(mr[:4, -4:].sum()) == 16, "rotated mask must track rotated change"
+    ds = ChipDataset(d, stats, augment=True)
+    for _ in range(30):  # 16 possible transforms; a misaligned draw fails here
+        t0, t1, m = ds[0]
+        changed = (t1 - t0).abs().sum(dim=0) > 1.0
+        assert torch.equal(changed, m.bool()), "mask must track the transformed change block"
+        assert int(m.sum()) == 16, "transform must not create or destroy change pixels"
 
 
 def test_memmap_no_ram_blowup(fake_split):
