@@ -48,11 +48,14 @@ class DriveStore:
     def __init__(self, drive_root: str | Path = DRIVE_ROOT, scratch: str | Path = SCRATCH):
         self.drive = Path(drive_root)
         self.scratch = Path(scratch)
-        if not self.drive.is_dir():
+        # verify the Drive MOUNT (e.g. /content/drive/MyDrive), not s2cd itself —
+        # s2cd/ and its subfolders are created below on first use
+        if not self.drive.parent.is_dir():
             raise FileNotFoundError(
-                f"Drive root not found: {self.drive}. "
+                f"Drive not mounted: {self.drive.parent} is missing. "
                 "Mount Drive first (google.colab.drive.mount) or pass drive_root."
             )
+        self.drive.mkdir(parents=True, exist_ok=True)
         self._ensure_layout()
 
     # ------------------------------------------------------------------ setup
