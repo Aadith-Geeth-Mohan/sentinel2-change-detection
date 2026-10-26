@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "s2cd"
+version = "0.1.0"
+description = "GPU-accelerated bi-temporal change detection on Sentinel-2 (OSCD)"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pyyaml",
+    "rasterio",
+    "matplotlib",
+    "pillow",
+    "tqdm",
+    "pytest",
+]
+
+# NOTE: torch is deliberately NOT a hard dependency. Colab ships a CUDA-enabled
+# torch; listing it here would let pip replace it with the CPU PyPI wheel.
+# For local (non-Colab) development: pip install -e ".[local]"
+
+[project.optional-dependencies]
+local = ["torch", "torchvision"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

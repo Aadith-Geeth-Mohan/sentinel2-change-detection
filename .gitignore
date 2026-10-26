@@ -1,0 +1,23 @@
+# data & artifacts — never commit
+data/
+runs/
+reports/
+*.zip
+*.tif
+*.npy
+*.npz
+*.pth
+*.ckpt
+
+# python
+__pycache__/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# notebooks / colab
+.ipynb_checkpoints/
+
+# secrets
+.env

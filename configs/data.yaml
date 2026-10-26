@@ -1,0 +1,13 @@
+# Data build configuration
+# Bands kept for chips (10m + useful 20m bands; drops 60m B01/B09/B10 cirrus)
+bands: [B02, B03, B04, B05, B06, B07, B08, B8A, B11, B12]
+
+chip_size: 256
+stride: 256            # non-overlapping chips by default
+
+# How many of OSCD's 14 labeled train cities to hold out as our val split
+# (deterministic: first N cities alphabetically). Test = OSCD's 10 test cities.
+val_cities: 3
+
+# Reflectance scaling: OSCD stores uint16 counts (surface reflectance * 10000)
+reflectance_divisor: 10000

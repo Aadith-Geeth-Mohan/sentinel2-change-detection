@@ -1,0 +1,35 @@
+# Training configuration
+run_name: exp1
+seed: 42
+
+device: cuda           # falls back to cpu automatically if unavailable
+batch_size: 16
+num_epochs: 30
+num_workers: 2
+pin_memory: true
+
+# Model
+in_channels: 10        # must match configs/data.yaml `bands`
+base_channels: 64
+num_classes: 2         # 0 = no change, 1 = change
+
+# Optimization
+optimizer: adamw
+lr: 3.0e-4
+weight_decay: 1.0e-2
+scheduler: cosine
+warmup_epochs: 0
+
+# Loss: weighted sum of CrossEntropy + Dice (change pixels are sparse)
+ce_weight: 0.5
+dice_weight: 0.5
+
+# AMP + torch.compile
+amp: true
+compile: false         # set true for the G1/G3 experiment grid
+
+# Early stopping on val mIoU
+patience: 7
+
+# Augmentation (applied identically to t0, t1 and mask)
+augment: true
