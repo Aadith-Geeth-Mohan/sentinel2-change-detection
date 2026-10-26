@@ -4,6 +4,7 @@
 /data/
 /runs/
 /reports/
+/s2cd/
 *.zip
 *.tif
 *.npy
