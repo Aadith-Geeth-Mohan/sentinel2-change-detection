@@ -3,7 +3,8 @@
 bands: [B02, B03, B04, B05, B06, B07, B08, B8A, B11, B12]
 
 chip_size: 256
-stride: 256            # non-overlapping chips by default
+stride: 128            # 50% overlap: OSCD is small (~55 non-overlapping train
+                        # chips), overlap ~4x's the chip count for training
 
 # How many of OSCD's 14 labeled train cities to hold out as our val split
 # (deterministic: first N cities alphabetically). Test = OSCD's 10 test cities.
