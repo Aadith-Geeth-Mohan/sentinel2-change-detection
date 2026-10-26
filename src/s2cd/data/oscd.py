@@ -43,7 +43,7 @@ def _date_of(path: str) -> str:
     if m:
         return "-".join(m.groups())
     parent = os.path.basename(os.path.dirname(path))
-    return parent  # e.g. imgs_13/2016-04-20/B04.tif
+    return parent  # e.g. 'Images/<City>/imgs_1_rect/B04.tif' -> 'imgs_1_rect'
 
 
 def _looks_like_root_component(c: str) -> bool:
@@ -67,7 +67,7 @@ def list_cities(oscd_root: str | Path) -> dict[str, list[str]]:
             continue
         split = "test" if any("test" in c.lower() for c in comps) else "train"
         result[split].add(city)
-    out = {k: sorted(v) for k, v in result.items()}
+    out = {"train": sorted(result["train"]), "test": sorted(result["test"])}
     if not out.get("train"):
         raise RuntimeError(
             f"No labeled cities found under {oscd_root}. Expected "
@@ -88,11 +88,18 @@ def find_mask(oscd_root: str | Path, city: str) -> Path:
 # city reading
 # ---------------------------------------------------------------------------
 def _city_image_dir(oscd_root: Path, city: str) -> Path:
-    """Directory holding this city's band tifs (searches by path component)."""
-    for tif in oscd_root.rglob("*.tif"):
-        if city in tif.relative_to(oscd_root).parts:
-            return tif.parent
-    raise FileNotFoundError(f"No tif files found for city '{city}'")
+    """The city's folder in the Images tree. Layout (TorchGeo-verified):
+    '... Images/<City>/imgs_1_rect/*.tif' + 'imgs_2_rect/*.tif' + 'dates.txt',
+    where imgs_1_rect / imgs_2_rect are the two temporal epochs. The Labels
+    trees also contain tifs (rasterized polygons) — those are excluded."""
+    for tif in sorted(oscd_root.rglob("*.tif")):
+        parts = tif.relative_to(oscd_root).parts
+        if city not in parts:
+            continue
+        if any("label" in p.lower() for p in parts):
+            continue
+        return oscd_root.joinpath(*parts[:parts.index(city) + 1])
+    raise FileNotFoundError(f"No image tifs found for city '{city}'")
 
 
 def _read_tif(path: Path) -> np.ndarray:
@@ -120,11 +127,10 @@ def read_city(oscd_root: str | Path, city: str, bands: list[str],
     oscd_root = Path(oscd_root)
     img_dir = _city_image_dir(oscd_root, city)
 
-    # group band files by date
+    # group band files by temporal epoch (imgs_1_rect / imgs_2_rect folders,
+    # or ISO dates in filenames on mirrors that use that convention)
     by_date: dict[str, dict[str, Path]] = defaultdict(dict)
-    for f in img_dir.iterdir():
-        if not f.suffix.lower() == ".tif":
-            continue
+    for f in img_dir.rglob("*.tif"):
         band = _band_of(f.name)
         if band:
             by_date[_date_of(str(f))][band] = f
@@ -132,6 +138,14 @@ def read_city(oscd_root: str | Path, city: str, bands: list[str],
         raise RuntimeError(f"City '{city}': found <2 dates in {img_dir} ({sorted(by_date)})")
     dates = sorted(by_date)
     t0_date, t1_date = dates[0], dates[-1]
+
+    # human-readable acquisition dates live in the city's dates.txt
+    pretty_dates = [t0_date, t1_date]
+    dt_file = img_dir / "dates.txt"
+    if dt_file.exists():
+        toks = [ln.split()[-1] for ln in dt_file.read_text().splitlines() if ln.split()]
+        if len(toks) >= 2:
+            pretty_dates = [toks[0], toks[-1]]
 
     missing = [b for b in bands if b not in by_date[t0_date] or b not in by_date[t1_date]]
     if missing:
@@ -153,7 +167,7 @@ def read_city(oscd_root: str | Path, city: str, bands: list[str],
     mask = (mask > 0).astype(np.uint8)
 
     return {"city": city, "t0": t0, "t1": t1, "mask": mask, "shape": ref,
-            "dates": [t0_date, t1_date]}
+            "dates": pretty_dates}
 
 
 def city_chip_count(shape, chip: int, stride: int) -> int:
