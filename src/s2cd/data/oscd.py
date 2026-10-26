@@ -51,11 +51,23 @@ def _looks_like_root_component(c: str) -> bool:
     return ("onera" in cl) or ("label" in cl) or ("dataset" in cl and "images" in cl)
 
 
+def _is_label_png(oscd_root: Path, png: Path) -> bool:
+    """Ground-truth change maps live as '... Labels/<City>/cm/cm.png'.
+
+    The Images tree also ships quicklook RGB previews at
+    'Images/<City>/pair/img{1,2}.png'. Without this filter those preview pngs
+    spawn a phantom 'pair' city and can even be returned as a city's mask."""
+    parts = png.relative_to(oscd_root).parts
+    return "cm" in parts and any("label" in p.lower() for p in parts)
+
+
 def list_cities(oscd_root: str | Path) -> dict[str, list[str]]:
     """Discover labeled cities. Returns {'train': [...], 'test': [...]}."""
     oscd_root = Path(oscd_root)
     result = defaultdict(set)
     for png in oscd_root.rglob("*.png"):
+        if not _is_label_png(oscd_root, png):
+            continue
         comps = [p for p in png.relative_to(oscd_root).parts[:-1]]
         city = None
         for c in reversed(comps):
@@ -77,9 +89,11 @@ def list_cities(oscd_root: str | Path) -> dict[str, list[str]]:
 
 
 def find_mask(oscd_root: str | Path, city: str) -> Path:
-    for png in Path(oscd_root).rglob("*.png"):
-        parts = png.relative_to(Path(oscd_root)).parts
-        if city in parts:
+    oscd_root = Path(oscd_root)
+    for png in sorted(oscd_root.rglob("*.png")):
+        if not _is_label_png(oscd_root, png):
+            continue
+        if city in png.relative_to(oscd_root).parts:
             return png
     raise FileNotFoundError(f"No label png found for city '{city}'")
 
