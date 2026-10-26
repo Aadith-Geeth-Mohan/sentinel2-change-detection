@@ -1,7 +1,9 @@
 # data & artifacts — never commit
-data/
-runs/
-reports/
+# leading "/" anchors these to the repo root, so src/s2cd/data/ (a Python
+# package) is NOT ignored
+/data/
+/runs/
+/reports/
 *.zip
 *.tif
 *.npy
