@@ -60,9 +60,21 @@ def predict_city(model, t0: np.ndarray, t1: np.ndarray, stats: dict,
     prob = np.zeros((h, w), dtype=np.float32)
     count = np.zeros((h, w), dtype=np.float32)
 
-    for y in range(0, max(h - chip, 0) + 1, stride):
-        for x in range(0, max(w - chip, 0) + 1, stride):
-            yc, xc = min(y, h - chip), min(x, w - chip)
+    def starts(size: int) -> list[int]:
+        """Window origins along one axis; a clamped final window covers the
+        tail so no right/bottom strip is left uncounted when size isn't a
+        multiple of stride (e.g. abudhabi 799px would otherwise lose its last
+        size % stride rows). Cities smaller than one chip get a single window."""
+        if size <= chip:
+            return [0]
+        ys = list(range(0, size - chip + 1, stride))
+        if ys[-1] != size - chip:
+            ys.append(size - chip)
+        return ys
+
+    for y in starts(h):
+        for x in starts(w):
+            yc, xc = y, x  # starts() already yields in-bounds origins
             a = (t0[:, yc:yc + chip, xc:xc + chip].astype(np.float32) - mean) / std
             b = (t1[:, yc:yc + chip, xc:xc + chip].astype(np.float32) - mean) / std
             a = torch.from_numpy(a)[None].to(device)
