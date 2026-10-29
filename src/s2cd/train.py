@@ -1,5 +1,7 @@
 """Training loop: AMP, optional torch.compile, per-epoch Drive checkpoint,
-auto-resume (worst case loses one epoch), early stopping on val mIoU."""
+auto-resume (worst case loses one epoch), early stopping on val mIoU.
+A re-run over a FINISHED run detects completion (early stop or full
+schedule) and skips — the recorded checkpoint is never silently retrained."""
 
 import json
 import time
@@ -108,7 +110,10 @@ def train(cfg_path: str, repo_root: str | Path = ".", store: DriveStore | None =
     ckpt_local = run_dir / "last.ckpt"
     store.fetch_run(cfg["run_name"])
     if ckpt_local.exists():
-        ck = torch.load(ckpt_local, map_location=device, weights_only=False)
+        # map_location MUST be cpu: a cuda-mapped RNG state tensor is a
+        # cuda.ByteTensor and torch.set_rng_state rejects it. Optimizer state
+        # is cast back onto the params' device by load_state_dict itself.
+        ck = torch.load(ckpt_local, map_location="cpu", weights_only=False)
         unwrap_model(model).load_state_dict(ck["model"])
         optimizer.load_state_dict(ck["optimizer"])
         scheduler.load_state_dict(ck["scheduler"])
@@ -116,7 +121,22 @@ def train(cfg_path: str, repo_root: str | Path = ".", store: DriveStore | None =
         set_rng_state(ck["rng"])
         start_epoch, best_miou = ck["epoch"] + 1, ck["best_miou"]
         history = json.loads((run_dir / "history.json").read_text())
-        print(f"resumed from epoch {start_epoch} (best mIoU {best_miou:.4f})")
+
+        # a FINISHED run must never re-train: resuming past an early stop
+        # would keep optimizing and invalidate the reported checkpoint.
+        # history tells us why the loop ended — an early stop is exactly
+        # 'patience' non-improving epochs after the best one.
+        best_i = max(range(len(history)), key=lambda i: history[i]["val_miou"])
+        ran_past_best = len(history) - 1 - best_i
+        if start_epoch >= cfg["num_epochs"] or ran_past_best >= cfg.get("patience", 7):
+            print(f"run {cfg['run_name']!r} already complete "
+                  f"({len(history)} epochs, best val mIoU {best_miou:.4f}) — "
+                  "keeping the finished checkpoint; skipping training")
+            return history
+        # a mid-run resume keeps the REMAINING patience, not a fresh budget
+        patience_left = max(cfg.get("patience", 7) - ran_past_best, 1)
+        print(f"resumed from epoch {start_epoch} (best mIoU {best_miou:.4f}, "
+              f"{patience_left} epochs of patience left)")
 
     # ---- loop --------------------------------------------------------------
     for epoch in range(start_epoch, cfg["num_epochs"]):
