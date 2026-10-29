@@ -4,7 +4,8 @@ Real per-pixel change detection on bi-temporal Copernicus Sentinel-2 imagery
 (Siamese U-Net on the OSCD benchmark), a rigorous GPU measurement work
 package (batch scaling, AMP × `torch.compile`, GPU-vs-CPU benchmark), and a
 zero-shot transfer study applying the trained model unchanged to a
-Google-Earth-Engine-acquired pair over Chennai, India.
+Google-Earth-Engine-acquired three-date Sentinel-2 set (2018 / 2021 / 2025)
+over Chennai, India.
 
 ## Results
 
@@ -74,7 +75,7 @@ the exact in-zip layout automatically — don't rename anything.
 | `04_gpu_analysis` | batch-size scaling + AMP × compile grid |
 | `05_benchmark` | GPU vs CPU benchmark, formal methodology |
 | `06_report_figures` | test metrics, per-city change maps, figures → Drive |
-| `07_chennai` | zero-shot transfer: GEE-acquired Chennai pair → change map |
+| `07_chennai` | zero-shot transfer: GEE-acquired Chennai scenes (2018/2021/2025) → change maps |
 
 Suggested runtime: **A100** for 02–03, any GPU for 04–07. Open notebooks via
 their GitHub URLs; after a pull, restart the runtime so the kernel isn't
@@ -86,23 +87,35 @@ guarantees it).
 No labeled change-detection dataset exists for Chennai (OSCD covers 24 fixed
 cities, Mumbai being the only Indian one), so phase 2 reframes the project
 as a **zero-shot transfer study**: the OSCD-trained model is applied
-*unchanged* (no fine-tuning, no Chennai labels) to a bi-temporal Sentinel-2
-L2A pair over the full Chennai metro + fringe, acquired independently via
-Google Earth Engine (`COPERNICUS/S2_SR_HARMONIZED`, least-cloudy scene per
-date, same 10 pipeline bands, 20 m bands bilinear-resampled to 10 m at
-export time — mirroring the OSCD preprocessing, same post-monsoon window
-for both dates to suppress phenological "change").
+*unchanged* (no fine-tuning, no Chennai labels) to a tri-temporal
+Sentinel-2 L2A set over the full Chennai metro + fringe — three scenes
+(Jan–Mar of 2018, 2021 and 2025, all post-monsoon) acquired independently
+via Google Earth Engine (`COPERNICUS/S2_SR_HARMONIZED`, least-cloudy scene
+per period, same 10 pipeline bands, 20 m bands bilinear-resampled to 10 m
+at export time — mirroring the OSCD preprocessing; same-season pairing
+suppresses phenological "change"). Pairwise inference answers two
+questions: **what changed** by 2025 (the 2018 → 2025 map) and **when it
+changed** (2018 → 2021 vs 2021 → 2025 panels localizing each change to the
+period it appeared in).
 
-Deliverables (notebook `07_chennai`, all pushed to `MyDrive/s2cd/reports/`):
-`map_chennai.png` (t0 / t1 / P(change) city map),
-`map_chennai_hotspots.png` (top-3 512-px cells by mean probability — the
-qualitative-evidence figure), `change_prob_chennai.tif` (georeferenced
-probability map, QGIS-ready) and `chennai_results.json` (scene IDs, dates,
-cloud %, AOI, device, timing — the full reproducibility record). Without
-labels the Chennai output is **qualitative by design**: signal = spatially
-coherent high-probability clusters matching visible construction in the RGB
-pair; the scored claims remain the OSCD test benchmark above. OSM-derived
-labels for a scored Chennai evaluation are future work.
+Deliverables (notebook `07_chennai`, all pushed to `MyDrive/s2cd/reports/`;
+every figure panel is labeled with the actual acquisition date, not epoch
+jargon):
+- `map_chennai.png` — 2018 image / 2025 image / change-probability city map
+- `map_chennai_progression.png` — the three pairwise maps side by side
+  (the *when did it happen* figure)
+- `map_chennai_hotspots.png` — top-3 512-px cells by mean probability, each
+  shown at all three dates plus the flagged change (the qualitative-evidence
+  figure)
+- `change_prob_chennai_{2018_2021,2021_2025,2018_2025}.tif` — georeferenced
+  probability maps, QGIS-ready
+- `chennai_results.json` — scene IDs, dates, cloud %, AOI, device, timing
+  (the full reproducibility record)
+
+Without labels the Chennai output is **qualitative by design**: signal =
+spatially coherent high-probability clusters matching visible construction
+in the RGB triple; the scored claims remain the OSCD test benchmark above.
+OSM-derived labels for a scored Chennai evaluation are future work.
 
 New modules on this branch: `src/s2cd/data/gee_acquire.py` (scene search +
 Drive export; `earthengine-api` is deliberately not a package dependency,
