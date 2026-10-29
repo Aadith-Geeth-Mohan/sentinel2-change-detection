@@ -52,6 +52,9 @@ def predict_city(model, t0: np.ndarray, t1: np.ndarray, stats: dict,
 
     t0, t1: (C, H, W) float arrays in reflectance units (0-1) as produced by
     oscd.read_city — already divided, unlike the raw DN stored in the memmaps.
+    L2AScene (lazy reader over an EE-exported GeoTIFF, see s2_l2a.py) is a
+    drop-in: only .shape and window slices are touched, so full-city scenes
+    stream from disk window-by-window.
     """
     device = device or next(model.parameters()).device
     mean = np.asarray(stats["mean"], dtype=np.float32)[:, None, None]

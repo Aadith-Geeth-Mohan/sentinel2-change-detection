@@ -24,3 +24,9 @@ dist/
 
 # secrets
 .env
+
+# local-only docs & the Drive-download mirror — keep out of the repo
+/s2cd (output)/
+/IMPLEMENTATION.md
+/NEW_SAMPLE REPORT.md
+/NOTEBOOK_LAYOUT.md
