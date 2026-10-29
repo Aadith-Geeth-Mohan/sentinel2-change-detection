@@ -90,8 +90,10 @@ as a **zero-shot transfer study**: the OSCD-trained model is applied
 *unchanged* (no fine-tuning, no Chennai labels) to a tri-temporal
 Sentinel-2 L2A set over the full Chennai metro + fringe — three scenes
 (Jan–Mar of 2018, 2021 and 2025, all post-monsoon) acquired independently
-via Google Earth Engine (`COPERNICUS/S2_SR_HARMONIZED`, least-cloudy scene
-per period, same 10 pipeline bands, 20 m bands bilinear-resampled to 10 m
+via Google Earth Engine (`COPERNICUS/S2_SR_HARMONIZED`, least-cloudy
+full-coverage acquisition date per period — all same-day tile granules
+mosaicked, since a single ~100 km granule never covers the multi-tile AOI;
+same 10 pipeline bands, 20 m bands bilinear-resampled to 10 m
 at export time — mirroring the OSCD preprocessing; same-season pairing
 suppresses phenological "change"). Pairwise inference answers two
 questions: **what changed** by 2025 (the 2018 → 2025 map) and **when it
